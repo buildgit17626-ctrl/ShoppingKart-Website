@@ -1,0 +1,8 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import api, { errorMessage } from '../services/api';
+export default function Login({ setUser }) {
+  const navigate = useNavigate(); const [form, setForm] = useState({ email: '', password: '' }); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
+  const submit = async e => { e.preventDefault(); setError(''); setLoading(true); try { await api.post('/login', form); const { data } = await api.get('/me'); setUser(data); navigate('/home'); } catch (e) { setError(e.response?.status === 401 ? 'Invalid Credentials' : errorMessage(e)); } finally { setLoading(false); } };
+  return <div className="auth-container"><section className="auth-card"><span className="eyebrow">YOUR EVERYDAY FINDS AWAIT</span><h1 className="auth-title">Welcome back.</h1><p className="auth-subtitle">Log in to your ShopKart account.</p><form onSubmit={submit}><div className="form-group"><label htmlFor="login-email">Email Address</label><input id="login-email" type="email" autoComplete="email" required value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div><div className="form-group"><label htmlFor="login-password">Password</label><input id="login-password" type="password" autoComplete="current-password" required value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} /></div>{error && <p className="alert-banner alert-error" role="alert">{error}</p>}<button className="btn-submit" disabled={loading}>{loading ? 'Authenticating...' : 'Login'}</button></form><p className="auth-footer">New to ShopKart? <Link to="/register">Create an account</Link></p></section></div>;
+}

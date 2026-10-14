@@ -1,0 +1,66 @@
+const path = require('path');
+const fs = require('fs');
+const mongoose = require('mongoose');
+const { MongoMemoryServer } = require('mongodb-memory-server');
+const { chromium, expect } = require('@playwright/test');
+process.env.JWT_SECRET = 'ui-tests-secret-only-01234567890123456789';
+const app = require('../app');
+const { seed } = require('../seed');
+const Customer = require('../models/customer.model');
+async function run() {
+  const mongo = await MongoMemoryServer.create();
+  let server, browser;
+  try {
+    await mongoose.connect(mongo.getUri()); await Customer.init(); await seed();
+    server = app.listen(0, '127.0.0.1'); await new Promise(resolve => server.once('listening', resolve));
+    const base = 'http://127.0.0.1:' + server.address().port;
+    process.env.PUBLIC_ORIGIN = base;
+    // app checks this origin dynamically, so the ephemeral test port is allowed.
+    browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || 'msedge', headless: true });
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    const page = await context.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message));
+    await page.goto(base + '/cart'); await expect(page).toHaveURL(/\/login$/);
+    await page.getByRole('link', { name: 'Create Account', exact: true }).click();
+    await page.getByLabel('Full Name').fill('Browser Customer'); await page.getByLabel('Email Address').fill('browser@example.com'); await page.getByLabel('Password (minimum 6 characters)').fill('browser123'); await page.getByLabel('Phone Number').fill('9876543210'); await page.getByRole('button', { name: 'Create Account', exact: true }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await page.getByLabel('Email Address').fill('browser@example.com'); await page.getByLabel('Password', { exact: true }).fill('wrong'); await page.getByRole('button', { name: 'Login', exact: true }).click(); await expect(page.getByRole('alert')).toHaveText('Invalid Credentials');
+    await page.getByLabel('Password', { exact: true }).fill('browser123'); await page.getByRole('button', { name: 'Login', exact: true }).click(); await expect(page).toHaveURL(/\/home$/); await expect(page.getByRole('heading', { name: 'Welcome, Browser Customer.' })).toBeVisible();
+    if (!(await context.cookies()).find(c => c.name === 'token')?.httpOnly) throw new Error('Session cookie is not HttpOnly');
+    await page.getByRole('link', { name: 'Products', exact: true }).click(); await expect(page.locator('.product-card')).toHaveCount(8);
+    const resultDir = path.join(__dirname, '../../test-results'); fs.mkdirSync(resultDir, { recursive: true });
+    await page.screenshot({ path: path.join(resultDir, 'catalog-desktop.png'), fullPage: true });
+    await page.getByLabel('Search products', { exact: true }).fill('KEYBOARD'); await expect(page.locator('.product-card')).toHaveCount(1);
+    await page.getByRole('button', { name: 'Add to Wishlist', exact: true }).click(); await expect(page.getByRole('link', { name: 'Wishlist (1)' })).toBeVisible();
+    await page.getByRole('button', { name: 'Add to Cart', exact: true }).click(); await expect(page.getByRole('link', { name: 'Cart (1)' })).toBeVisible();
+    await page.getByRole('button', { name: 'Add Another', exact: true }).click(); await expect(page.getByRole('link', { name: 'Cart (2)' })).toBeVisible();
+    await page.getByRole('link', { name: 'View Details', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Mechanical Keyboard' })).toBeVisible(); await expect(page.locator('.detail-copy')).toContainText('Compact mechanical keyboard');
+    await page.getByRole('link', { name: 'Wishlist (1)' }).click(); await expect(page.locator('.product-card')).toHaveCount(1); await page.reload(); await expect(page.locator('.product-card')).toHaveCount(1);
+    await page.getByRole('link', { name: 'Cart (2)' }).click(); await expect(page.locator('.order-summary')).toContainText('₹5,998.00');
+    await page.getByRole('button', { name: 'Increase Mechanical Keyboard' }).click(); await expect(page.getByRole('link', { name: 'Cart (3)' })).toBeVisible(); await expect(page.locator('.order-summary')).toContainText('₹8,997.00');
+    await page.getByRole('button', { name: 'Decrease Mechanical Keyboard' }).click(); await expect(page.getByRole('link', { name: 'Cart (2)' })).toBeVisible(); await page.reload(); await expect(page.getByRole('link', { name: 'Cart (2)' })).toBeVisible();
+    await page.getByRole('link', { name: 'Proceed to Checkout' }).click(); await expect(page.getByRole('heading', { name: 'Checkout' })).toBeVisible();
+    await page.getByRole('button', { name: 'Logout', exact: true }).click(); await expect(page).toHaveURL(/\/login$/); await expect(page.getByRole('link', { name: 'Cart (2)' })).toHaveCount(0);
+    await page.getByLabel('Email Address').fill('browser@example.com'); await page.getByLabel('Password', { exact: true }).fill('browser123'); await page.getByRole('button', { name: 'Login', exact: true }).click(); await expect(page.getByRole('link', { name: 'Cart (2)' })).toBeVisible(); await expect(page.getByRole('link', { name: 'Wishlist (1)' })).toBeVisible();
+    await page.getByRole('link', { name: 'Cart (2)' }).click(); await page.getByRole('button', { name: 'Remove', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Your cart is empty 🛒' })).toBeVisible(); await expect(page.getByRole('link', { name: 'Cart (0)' })).toBeVisible();
+    await page.getByRole('link', { name: 'Wishlist (1)' }).click(); await page.getByRole('button', { name: 'Remove from Wishlist', exact: true }).click(); await expect(page.getByRole('heading', { name: 'Your wishlist is empty ♡' })).toBeVisible();
+    await page.getByRole('link', { name: 'Browse Products' }).click(); await expect(page.locator('.product-card')).toHaveCount(8); await page.getByLabel('Search products', { exact: true }).fill('nothing-matches'); await expect(page.getByRole('heading', { name: 'No products found' })).toBeVisible();
+    await page.getByRole('button', { name: 'Reset', exact: true }).click(); await page.getByLabel('Category', { exact: true }).selectOption('Books'); await expect(page.locator('.product-card')).toHaveCount(2); await page.getByLabel('Sort by', { exact: true }).selectOption('price_asc'); await expect(page.locator('.product-card').first()).toContainText('Pocket Notes Journal');
+    await page.getByRole('button', { name: 'Reset', exact: true }).click(); await expect(page.locator('.product-card')).toHaveCount(8); await expect(page.locator('.product-card').filter({ hasText: 'Minimal Desk Lamp' }).getByRole('button', { name: 'Add to Cart' })).toBeDisabled();
+    await page.route('**/api/products?search=error-test', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Temporary test failure' }) })); await page.getByLabel('Search products', { exact: true }).fill('error-test'); await expect(page.getByRole('heading', { name: 'Unable to load products' })).toBeVisible(); await page.unroute('**/api/products?search=error-test'); await page.getByRole('button', { name: 'Try Again' }).click(); await expect(page.getByRole('heading', { name: 'No products found' })).toBeVisible();
+    await page.getByRole('button', { name: 'Reset', exact: true }).click(); await expect(page.locator('.product-card')).toHaveCount(8);
+    let releaseProducts;
+    const waitProducts = new Promise(resolve => { releaseProducts = resolve; });
+    await page.route('**/api/products?search=loading-test', async route => { await waitProducts; await route.continue(); });
+    await page.getByLabel('Search products', { exact: true }).fill('loading-test'); await expect(page.getByRole('heading', { name: 'Loading products...' })).toBeVisible(); releaseProducts(); await expect(page.getByRole('heading', { name: 'No products found' })).toBeVisible(); await page.unroute('**/api/products?search=loading-test');
+    await page.route('**/api/wishlist', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Wishlist temporarily unavailable' }) }));
+    await page.getByRole('link', { name: 'Wishlist (0)' }).click(); await expect(page.getByRole('heading', { name: 'Unable to load wishlist' })).toBeVisible(); await page.unroute('**/api/wishlist'); await page.getByRole('button', { name: 'Try Again' }).click(); await expect(page.getByRole('heading', { name: 'Your wishlist is empty ♡' })).toBeVisible();
+    await page.route('**/api/cart', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'Cart temporarily unavailable' }) }));
+    await page.goto(base + '/cart'); await expect(page.getByRole('heading', { name: 'Unable to load your cart' })).toBeVisible(); await page.unroute('**/api/cart'); await page.getByRole('button', { name: 'Try Again' }).last().click(); await expect(page.getByRole('heading', { name: 'Your cart is empty 🛒' })).toBeVisible();
+    await page.getByRole('link', { name: 'Products', exact: true }).click(); await expect(page.locator('.product-card')).toHaveCount(8);
+    await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: path.join(resultDir, 'catalog-mobile.png'), fullPage: true });
+    if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) throw new Error('Mobile layout overflows viewport');
+    if (errors.length) throw new Error('Browser runtime errors: ' + errors.join('; '));
+    console.log('PASS: real-browser registration, auth, cookie, products, search/filter/sort, wishlist/cart persistence, quantity/totals, checkout navigation, empty/error/retry and mobile layout.');
+  } finally { await browser?.close(); if (server) await new Promise(resolve => server.close(resolve)); await mongoose.disconnect(); await mongo.stop(); }
+}
+run().catch(e => { console.error(e); process.exitCode = 1; });

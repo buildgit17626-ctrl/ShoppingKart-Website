@@ -1,0 +1,10 @@
+const router = require('express').Router();
+const c = require('../controllers/customer.controller');
+const { protect } = require('../middlewares/auth.middleware');
+const { wrap } = require('../utils/http');
+router.post('/register', wrap(c.registerCustomer));
+router.post('/login', wrap(c.loginCustomer));
+router.get('/me', protect, wrap(c.getProfile));
+router.post('/logout', protect, wrap(c.logoutCustomer));
+router.patch('/change-password', protect, wrap(c.changePassword));
+module.exports = router;

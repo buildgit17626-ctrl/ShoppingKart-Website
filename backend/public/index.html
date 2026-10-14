@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopKart — Customer Authentication Service</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: rgba(22, 30, 49, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-primary: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --success-color: #10b981;
+      --error-color: #ef4444;
+      --code-bg: #090d16;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.12) 0%, transparent 40%);
+      padding: 2rem 1.5rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: 9999px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--success-color);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--success-color);
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.75rem;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .method {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .method.post { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .method.get { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .method.patch { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: rgba(10, 15, 26, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    button.btn {
+      width: 100%;
+      padding: 0.8rem;
+      border-radius: 10px;
+      border: none;
+      background: var(--accent-gradient);
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease, transform 0.1s ease;
+      margin-top: 0.5rem;
+    }
+
+    button.btn:hover {
+      opacity: 0.92;
+    }
+
+    button.btn:active {
+      transform: scale(0.99);
+    }
+
+    button.btn-outline {
+      background: transparent;
+      border: 1px solid var(--accent-primary);
+      color: #a5b4fc;
+    }
+
+    button.btn-outline:hover {
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    .response-section {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .response-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .status-pill {
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .status-200, .status-201 { color: var(--success-color); background: rgba(16, 185, 129, 0.15); }
+    .status-400, .status-401, .status-409, .status-500 { color: var(--error-color); background: rgba(239, 68, 68, 0.15); }
+
+    pre {
+      background: var(--code-bg);
+      padding: 1.25rem;
+      border-radius: 12px;
+      overflow-x: auto;
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: #38bdf8;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      max-height: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge"><span class="dot"></span> ShopKart Backend Auth API Live Inspector</div>
+      <h1>ShopKart Authentication Service</h1>
+      <p class="subtitle">Interactive Test Suite for Customer Registration, Login, Profile & Cookie Auth</p>
+    </header>
+
+    <div class="grid">
+      <!-- Register Form -->
+      <div class="card">
+        <div class="card-title">
+          <span>Customer Registration</span>
+          <span class="method post">POST</span>
+        </div>
+        <form id="regForm">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="regFullName" value="John Doe" required>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="regEmail" value="john@gmail.com" required>
+          </div>
+          <div class="form-group">
+            <label>Password (min 6 chars)</label>
+            <input type="password" id="regPassword" value="john123" required>
+          </div>
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" id="regPhone" value="9876543210" required>
+          </div>
+          <button type="submit" class="btn">POST /customers/register</button>
+        </form>
+      </div>
+
+      <!-- Login Form -->
+      <div class="card">
+        <div class="card-title">
+          <span>Customer Login</span>
+          <span class="method post">POST</span>
+        </div>
+        <form id="loginForm">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="loginEmail" value="john@gmail.com" required>
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="loginPassword" value="john123" required>
+          </div>
+          <button type="submit" class="btn">POST /customers/login</button>
+        </form>
+      </div>
+
+      <!-- Profile & Session Actions -->
+      <div class="card">
+        <div class="card-title">
+          <span>Profile & Session</span>
+          <span class="method get">GET</span>
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.2rem;">
+          Tests HttpOnly Cookie verification for protected endpoints.
+        </p>
+        <button id="btnProfile" class="btn btn-outline" style="margin-bottom: 0.75rem;">GET /customers/me</button>
+        <button id="btnLogout" class="btn btn-outline" style="border-color: #ef4444; color: #f87171;">POST /customers/logout</button>
+      </div>
+
+      <!-- Change Password Form (Bonus) -->
+      <div class="card">
+        <div class="card-title">
+          <span>Change Password (Bonus)</span>
+          <span class="method patch">PATCH</span>
+        </div>
+        <form id="changePassForm">
+          <div class="form-group">
+            <label>Old Password</label>
+            <input type="password" id="oldPassword" value="john123" required>
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="newPassword" value="newjohn123" required>
+          </div>
+          <button type="submit" class="btn">PATCH /customers/change-password</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Live Response Console -->
+    <div class="response-section">
+      <div class="response-header">
+        <h3>API Response Inspector</h3>
+        <span id="statusPill" class="status-pill">Ready</span>
+      </div>
+      <pre id="jsonOutput">// Click any API button above to send HTTP request and view live JSON response</pre>
+    </div>
+  </div>
+
+  <script>
+    const jsonOutput = document.getElementById('jsonOutput');
+    const statusPill = document.getElementById('statusPill');
+
+    function updateOutput(status, data) {
+      statusPill.textContent = `Status: ${status}`;
+      statusPill.className = `status-pill status-${status}`;
+      jsonOutput.textContent = JSON.stringify(data, null, 2);
+    }
+
+    // Register Form Handler
+    document.getElementById('regForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        fullName: document.getElementById('regFullName').value,
+        email: document.getElementById('regEmail').value,
+        password: document.getElementById('regPassword').value,
+        phone: document.getElementById('regPhone').value
+      };
+
+      const res = await fetch('/customers/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      updateOutput(res.status, data);
+    });
+
+    // Login Form Handler
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPassword').value
+      };
+
+      const res = await fetch('/customers/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      updateOutput(res.status, data);
+    });
+
+    // Profile Handler
+    document.getElementById('btnProfile').addEventListener('click', async () => {
+      const res = await fetch('/customers/me');
+      const data = await res.json();
+      updateOutput(res.status, data);
+    });
+
+    // Logout Handler
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+      const res = await fetch('/customers/logout', { method: 'POST' });
+      const data = await res.json();
+      updateOutput(res.status, data);
+    });
+
+    // Change Password Form Handler
+    document.getElementById('changePassForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = {
+        oldPassword: document.getElementById('oldPassword').value,
+        newPassword: document.getElementById('newPassword').value
+      };
+
+      const res = await fetch('/customers/change-password', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      updateOutput(res.status, data);
+    });
+  </script>
+</body>
+</html>
